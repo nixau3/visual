@@ -1,20 +1,25 @@
 package com.example.calcul2
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.media.AudioManager
 import android.media.MediaPlayer
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 
 class Mp3PlayerActivity : AppCompatActivity() {
 
     private lateinit var pleer: MediaPlayer
-    private lateinit var povtorKnopka: Button
     private lateinit var knopkaPlay: Button
     private lateinit var knopkaNext: Button
     private lateinit var knopkaNazad: Button
+    private lateinit var povtorKnopka: Button
     private lateinit var polzunok: SeekBar
     private lateinit var zvukPolzunok: SeekBar
     private lateinit var vremyaText: TextView
@@ -30,6 +35,8 @@ class Mp3PlayerActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_mp3_player)
 
+        proveritRazreshenie()
+
         knopkaPlay = findViewById(R.id.playPauseButton)
         knopkaNext = findViewById(R.id.nextButton)
         knopkaNazad = findViewById(R.id.prevButton)
@@ -44,12 +51,12 @@ class Mp3PlayerActivity : AppCompatActivity() {
         zvukPolzunok.progress = zvuk.getStreamVolume(AudioManager.STREAM_MUSIC)
 
         zvukPolzunok.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(p0: SeekBar?, prog: Int, b: Boolean) {
+            override fun onProgressChanged(seekBar: SeekBar?, prog: Int, fromUser: Boolean) {
                 zvuk.setStreamVolume(AudioManager.STREAM_MUSIC, prog, 0)
             }
 
-            override fun onStartTrackingTouch(p0: SeekBar?) {}
-            override fun onStopTrackingTouch(p0: SeekBar?) {}
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
 
         zapustitPesnyu()
@@ -86,13 +93,32 @@ class Mp3PlayerActivity : AppCompatActivity() {
         }
 
         polzunok.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(p0: SeekBar?, prog: Int, b: Boolean) {
-                if (b) pleer.seekTo(prog)
+            override fun onProgressChanged(seekBar: SeekBar?, prog: Int, fromUser: Boolean) {
+                if (fromUser) pleer.seekTo(prog)
             }
 
-            override fun onStartTrackingTouch(p0: SeekBar?) {}
-            override fun onStopTrackingTouch(p0: SeekBar?) {}
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
+    }
+
+    private fun proveritRazreshenie() {
+        val razreshenie = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Manifest.permission.READ_MEDIA_AUDIO
+        } else {
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        }
+
+        if (ContextCompat.checkSelfPermission(this, razreshenie) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(razreshenie), 1)
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 1 && (grantResults.isEmpty() || grantResults[0] != PackageManager.PERMISSION_GRANTED)) {
+            Toast.makeText(this, "player'", Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun zapustitPesnyu() {
@@ -114,6 +140,7 @@ class Mp3PlayerActivity : AppCompatActivity() {
                 pleer.start()
             }
         }
+
         obnovitPolzunok()
     }
 
@@ -138,7 +165,7 @@ class Mp3PlayerActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
-        if (pleer.isPlaying) pleer.pause()
+        if (::pleer.isInitialized && pleer.isPlaying) pleer.pause()
     }
 
     override fun onDestroy() {
